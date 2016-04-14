@@ -1,0 +1,266 @@
+1)Situacion Inicial
+2)Problema que se plantea
+3)Solucion Planteada, ¿Por que funciona?
+
+
+En un principio tenemos la implementacion basica del Ejemplo "Cuenta Bancaria" visto en clase en donde tenemos una clase Persona (Person)
+y una clase Cuenta (Account) las dos con sus set(), get() y toString(). En este ejemplo tendriamos que hacer las pruebas en la clase main()
+pero en lugar implementaremos los test unitarios con Junit.
+//Antes:
+	Clase Person:
+		package es.unileon.prg1.bank;
+		class Person{
+			private String name;
+			Person(String name){
+				this.name = name;
+			}
+			String getName(){
+				return this.name;
+			}
+			void setName(String nombre){
+				this.name = nombre;
+			}
+			public String toString(){
+				return this.name;
+			}
+		}
+
+	Clase Account:
+		package es.unileon.prg1.bank;
+		class Account{
+			private Person owner;
+			private int balance;
+			Account (Account another){
+				this.owner = another.getOwner();
+				this.balance = another.getBalance();
+			}
+			Account(Person owner){
+				this.owner = owner;
+				this.balance = 0;
+			}
+			Account(Person owner, int balance){
+				this.owner = owner;
+				this.balance = balance;
+			}
+			int getBalance(){
+				return balance;
+			}
+			Person getOwner(){
+				return this.owner;
+			}
+			void deposit (int amount){
+				this.balance += amount;
+			}
+			void withdraw (int amount){
+				this.balance -= amount;
+			}
+			public String toString(){
+				return "Account: " +
+				owner.toString() +
+				" - Balance: " + balance;
+			}
+		}
+//Despues:
+	En person se añade un metodo que es la copia del constructor Person.
+	En account modifica metodos para poder crear una nueva copia de persona y una nueva copia de cuenta bancaria para asi poder 
+	utilizar estos nuevos metodos en los test de JUnit. Y modifica get Owner para que devuelva el objeto Persona correspondiente
+	a la cuenta.
+	//Person Modificaciones
+	Person(Person another){
+		this.name = another.getName();
+	}
+
+	//Account Modificaciones
+	Account (Account another){
+		this.owner = new Person(another.getOwner()); // MODIFIED
+		this.balance = another.getBalance();
+	}
+	Account(Person owner){
+		this.owner = new Person(owner); // MODIFIED
+		this.balance = 0;
+	}
+	Account(Person owner, int balance){
+		this.owner = new Person(owner); // MODIFIED
+		this.balance = balance;
+	}
+	int getBalance(){
+		return balance;
+	}
+	Person getOwner(){
+		return new Person(this.owner); // MODIFIED
+	}
+
+Luego se implementa la clase AccountTest en donde tenemos un @Before para inicializar los objetos de la prueba:
+
+	@Before
+	public void setUp() throws Exception {
+		this.john = new Person("John");
+		this.johnAccount = new Account ( this.john, 1000);
+	}
+
+A continuacion se implementan tests que prueban las diferentes funcionalidades de las clases
+
+	//Crea una cuenta de prueba anotherJohnAccount (igual a la cuenta johnAccount) que utiliza para comprobar que aunque sean cuentas 		de personas identicas estas son de diferentes propietarios.
+	@Test
+	public void testAccountAccount(){
+		Account anotherJohnAccount;
+		
+		anotherJohnAccount = new Account(this.johnAccount);
+		assertEquals(this.john.getName(), anotherJohnAccount.getOwner().getName());
+		assertNotSame(this.john, anotherJohnAccount.getOwner());
+		assertEquals(1000, anotherJohnAccount.getBalance());
+	}
+	//Crea una cuenta de prueba anotherJohnAccount de la persona john que utiliza para comparar nombres (que sean iguales pero que no 		sean iguales su Persona) por ultimo chequea que la cuenta de prueba creada no tenga balace a diferencia de la cuenta de john.
+	@Test
+	public void testAccountPerson() {
+		Account anotherJohnAccount;
+		
+		anotherJohnAccount = new Account(this.john);
+		assertEquals(this.john.getName(), anotherJohnAccount.getOwner().getName());
+		assertNotSame(this.john, anotherJohnAccount.getOwner());
+		assertEquals(0, anotherJohnAccount.getBalance());
+	}
+	//Prueba que tanto la cuenta como la persona tengan el mismo nombre (compara nombres) y luego pasa a comparar Owner con el objeto 		Persona para mostrar que no son los mismo, al final chequea que la cuenta original tiene el balance correcto.
+	@Test
+	public void testAccountPersonInt() {
+		assertEquals(this.john.getName(), this.johnAccount.getOwner().getName());
+		assertNotSame(this.john, this.johnAccount.getOwner());
+		assertEquals(1000, this.johnAccount.getBalance());
+	}
+	//Prueba como el apartado final del test anterior que el balance con el que se creo la cuenta de john siga siendo el mismo.
+	@Test
+	public void testGetBalance() {
+		assertEquals(1000, this.johnAccount.getBalance());
+	}
+	//Prueba que tanto el nombre del owner (la cuenta creada para john) y el nombre de la persona john sean el mismo. Y que el objeto 		persona john y el owner de la cuenta de john son cosas distintas (objeto =/= atributo)
+	@Test
+	public void testGetOwner() {
+		assertEquals(this.john.getName(), this.johnAccount.getOwner().getName());
+		assertNotSame(this.john, this.johnAccount.getOwner());
+	}
+	//Testea que al depositar 100 en la cuenta john se agregue a los 1000
+	@Test
+	public void testDeposit() {
+		johnAccount.deposit(100);
+		assertEquals(1100, johnAccount.getBalance());
+	}
+	//Chequea que al quitar 100 a la cuenta de john se quiten de los 1000
+	@Test
+	public void testWithdraw() {
+		johnAccount.withdraw(100);
+		assertEquals(900, johnAccount.getBalance());
+	}
+	//Crea una cuenta nueva para charles y le deposita money=1000 y luego prueba modificar la variable local para ver si hace alguna 		diferencia en la cuenta (lo cual no deberia pasar)
+	@Test
+	public void testBasicTypeParameterBalance() {
+		Account charlesAccount;
+		int money;
+
+		// a new account is created for Charles
+		charlesAccount = new Account( new Person( "Charles" ) );
+		// a value is assigned to the int variable
+		money = 1000;
+		// the int variable is used as parameter
+		charlesAccount.deposit(money);
+		// a different value is assigned to the int variable
+		money = 500;
+		
+		// changing the value of the external int variable money
+		// should not affect the int attribute of charlesAccount
+		assertEquals(charlesAccount.getBalance(), 1000);
+	}
+	//Crea un objeto persona "charles" y le crea una cuenta con 3000 de money luego cambia el atributo nombre al objeto persona 		charles y testea si este cambio modifica el nombre de la cuenta ya creada (lo cual no deberia)
+	@Test
+	public void testNotBasicTypeParameterOwner() {
+		Account charlesAccount;
+		Person charles;
+		
+		// a new Person object is created
+		// a value is assigned to the name of the Person object
+		charles = new Person( "Charles" );
+		// the Person object is used as parameter
+		charlesAccount = new Account( charles, 3000 );
+		// a different value is assigned to the name of the Person variable
+		charles.setName("Charlie");
+
+		// changing the value of the external Person variable charles
+		// should not affect the Person attribute of charlesAccount
+		assertEquals(charlesAccount.toString(), "Account: Charles - Balance: 3000");
+	}
+	//Asigna a una variable local money el atributo money del a cuenta de john luego prueba cambiar el valor de la variable local 		money a 500 y testea si esto realiza un cambio en el balance de la cuenta (lo cual no deberia)
+	@Test
+	public void testBasicTypeReturnValue() {
+		int money;
+		
+		// money is obtained as a return value
+		money = this.johnAccount.getBalance();
+		// the value of money is changed
+		money = 500;
+		// changing the value of the external int variable money
+		// should not affect the int attribute of johnAccount
+		assertEquals(this.johnAccount.getBalance(), 1000);		
+	}
+	//Asigna el propietario de la cuenta de john a la variable local Person aPerson y luego prueba modificar el nombre en la variable 		local para testear que esto no realizo ningun cambio en el owner de la cuenta (lo cual no deberia.)
+	@Test
+	public void testNotBasicTypeReturnValue() {
+		Person aPerson;
+		
+		// aPerson is obtained as a return value
+		aPerson = this.johnAccount.getOwner();
+		// the name of aPerson is changed
+		aPerson.setName("Johnie");
+		// changing the value of the external Person variable aPerson
+		// should not affect the Person attribute of johnAccount
+		assertEquals(this.johnAccount.toString(), "Account: John - Balance: 1000");		
+	}
+	//Testea si el toString() de el objeto account funciona correctamente.
+	@Test
+	public void testToString() {
+		assertEquals("Account: John - Balance: 1000", this.johnAccount.toString());
+	}
+
+
+Compilacion con Ant (antes de modificar):
+     [java] FAILURES!!!
+     [java] Tests run: 12,  Failures: 7
+     [java] 
+     [java] Java Result: 1
+
+
+Despues de modificar:
+     [java] JUnit version 4.8.2
+     [java] ............
+     [java] Time: 0.019
+     [java] 
+     [java] OK (12 tests)
+     [java] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
